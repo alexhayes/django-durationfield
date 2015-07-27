@@ -15,3 +15,11 @@ class TestNullableModel(models.Model):
 
 class TestDefaultModel(models.Model):
     duration_field = DurationField(default=DEFAULT_DURATION)
+
+
+class TestSecondPrecisionModel(models.Model):
+    duration_field = DurationField(precision='seconds')
+
+
+class TestDayPrecisionModel(models.Model):
+    duration_field = DurationField(precision='days')

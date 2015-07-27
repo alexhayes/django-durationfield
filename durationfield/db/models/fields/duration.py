@@ -27,9 +27,23 @@ class DurationField(six.with_metaclass(models.SubfieldBase, Field)):
         'unknown_type': _("The value's type could not be converted"),
     }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, precision='microseconds', *args, **kwargs):
+        """
+        :param precision: Defines the precision stored within the database - currently
+        supported values are 'microseconds', 'seconds' and 'days'.
+        """
+        if precision not in ('microseconds', 'seconds', 'days'):
+            raise NotImplementedError("Precision '%s' is not implemented." % self.precision)
+
+        self.precision = precision
+
         super(DurationField, self).__init__(*args, **kwargs)
-        #self.max_digits, self.decimal_places = 20, 6
+
+    def deconstruct(self):
+        name, path, args, kwargs = super(DurationField, self).deconstruct()
+        if self.precision is not None:
+            kwargs['precision'] = self.precision
+        return name, path, args, kwargs
 
     def get_internal_type(self):
         return "DurationField"
@@ -51,14 +65,25 @@ class DurationField(six.with_metaclass(models.SubfieldBase, Field)):
         if value is None:
             return None  # db NULL
         if isinstance(value, six.integer_types):
-            value = timedelta(microseconds=value)
+            kwargs = {self.precision: value}
+            value = timedelta(**kwargs)
         value = abs(value)  # all durations are positive
 
-        return (
-            value.days * 24 * 3600 * 1000000
-            + value.seconds * 1000000
-            + value.microseconds
-        )
+        if self.precision == 'microseconds':
+            return (
+                value.days * 24 * 3600 * 1000000
+                + value.seconds * 1000000
+                + value.microseconds
+            )
+        elif self.precision == 'seconds':
+            return (
+                value.days * 24 * 3600
+                + value.seconds
+            )
+        elif self.precision == 'days':
+            return value.days
+        else:
+            raise NotImplementedError("Precision '%s' is not implemented." % self.precision)
 
     def get_db_prep_save(self, value, connection=None):
         return self.get_db_prep_value(value, connection=connection)
@@ -83,13 +108,14 @@ class DurationField(six.with_metaclass(models.SubfieldBase, Field)):
             return value
 
         if isinstance(value, six.integer_types):
-            return timedelta(microseconds=value)
+            kwargs = {self.precision: value}
+            return timedelta(**kwargs)
 
         # Try to parse the value
         str_val = smart_text(value)
         if isinstance(str_val, six.string_types):
             try:
-                return str_to_timedelta(str_val)
+                return str_to_timedelta(str_val, self.precision)
             except ValueError:
                 raise exceptions.ValidationError(self.default_error_messages['invalid'])
 

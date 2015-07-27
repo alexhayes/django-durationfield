@@ -5,7 +5,9 @@ from .models import (
     TestModel,
     TestNullableModel,
     TestDefaultModel,
-    DEFAULT_DURATION
+    TestSecondPrecisionModel,
+    TestDayPrecisionModel,
+    DEFAULT_DURATION,
 )
 from durationfield.utils import timestring
 from datetime import timedelta
@@ -95,7 +97,7 @@ class DurationFieldTests(TestCase):
 
     def testApplicationType(self):
         """
-        Timedeltas should be returned to the applciation
+        Timedeltas should be returned to the application
         """
         for td in self.test_tds:
             model_test = TestModel()
@@ -156,6 +158,12 @@ class DurationFieldTests(TestCase):
         delta = timestring.str_to_timedelta("11:20:22.0160")
         self.assertEqual(16000, delta.microseconds)
 
+    def testInputTimePrecisionSeconds(self):
+        delta = timestring.str_to_timedelta("11:20:22.000098", "seconds")
+        seconds = (11 * 60 * 60) + (20 * 60) + 22
+        self.assertEqual(seconds, delta.seconds)
+        self.assertEqual(0, delta.microseconds)
+
     def testInputAll(self):
         delta = timestring.str_to_timedelta("1 year, 10 months, 3 weeks, 2 days, 3:40:50")
         days = (
@@ -201,3 +209,43 @@ class DurationFieldTests(TestCase):
         self.assertEqual(
             24, delta.days
         )
+
+    def testSecondPrecision(self):
+        for td in self.test_tds:
+            model_test = TestSecondPrecisionModel()
+            model_test.duration_field = td
+            model_test.save()
+            model_test = TestSecondPrecisionModel.objects.get(pk=model_test.pk)
+            # Strip microseconds
+            td = td - timedelta(microseconds=td.microseconds)
+            self.assertEqual(td, model_test.duration_field)
+
+    def testSecondPrecisionUsingString(self):
+        td = timedelta(hours=11, minutes=20, seconds=22)
+
+        model_test = TestSecondPrecisionModel()
+        model_test.duration_field = "11:20:22.000098"
+        self.assertEqual(td, model_test.duration_field)
+        model_test.save()
+        model_test = TestSecondPrecisionModel.objects.get(pk=model_test.pk)
+        # Strip microseconds
+        self.assertEqual(td, model_test.duration_field)
+
+    def testDayPrecision(self):
+        for td in self.test_tds:
+            model_test = TestDayPrecisionModel()
+            model_test.duration_field = td
+            model_test.save()
+            model_test = TestDayPrecisionModel.objects.get(pk=model_test.pk)
+            # Strip seconds and microseconds
+            td = td - timedelta(seconds=td.seconds, microseconds=td.microseconds)
+            self.assertEqual(td, model_test.duration_field)
+
+    def testDayPrecisionUsingString(self):
+        td = timedelta(days=20)
+        model_test = TestDayPrecisionModel()
+        model_test.duration_field = "20d 0:10:39.001213"
+        self.assertEqual(td, model_test.duration_field)
+        model_test.save()
+        model_test = TestDayPrecisionModel.objects.get(pk=model_test.pk)
+        self.assertEqual(td, model_test.duration_field)

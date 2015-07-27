@@ -27,16 +27,15 @@ and report back any issues.
 Django Versions
 ---------------
 
-django-durationfield supports Django 1.4.2 through Django 1.5+, with the goal to
-target the currently support versions of Django releases in the future. So as
-the Django Project drops support for older versions, django-durationfield will
-do the same.
+django-durationfield supports Django 1.4.2 through Django 1.8. As the Django
+Project drops support for older versions, django-durationfield will do the same.
 
 Django 1.4.2 is a minimum version as it introduced `compatibility features
 <https://docs.djangoproject.com/en/1.5/topics/python3/>`_ for
 supporting both Python 2 and Python 3.
 
-django-durationfield has support for Python 3.3.
+django-durationfield has support for Python versions 2.6, 2.7, 3.3, 3.4 and pypy
+however note that Python 2.6 support was `dropped in Django 1.7 <https://docs.djangoproject.com/en/1.8/faq/install/#what-python-version-can-i-use-with-django>`_.
 
 Please report any bugs or patches in improve version support.
 
@@ -109,6 +108,65 @@ Currently, those fields will be translated into days using either 365 or 30 resp
 
 To override this setting, add an entry into your settings named ``DURATIONFIELD_YEARS_TO_DAYS``
 or ``DURATIONFIELD_MONTHS_TO_DAYS`` setting a new translation value.
+
+Storing Seconds or Days
+-----------------------
+
+By default the data is stored in the database as microseconds, however if
+required you can store either seconds or days. Obviously doing this causes you
+to lose precision.
+
+This feature is useful if you are dealing with a legacy system that can't be
+changed that stores data in seconds or you simply don't need the precision of
+microseconds.
+
+Seconds Usage
+~~~~~~~~~~~~~
+
+The following causes the value in the database to be interpreted as seconds.
+
+In models.py::
+
+    from durationfield.db.models.fields.duration import DurationField
+
+    class Time(models.Model):
+        ...
+        duration = DurationField(precision='seconds')
+        ...
+
+    t = Time(duration='0:01:15.00123')
+    print str(t.duration) # -> '0:01:15'
+
+In the database the duration field would be set to :code:`75` (ie.. :code:`60+15`).
+
+Note that when setting duration as an integer it's interpreted as seconds, ie::
+
+    t = Time(duration=75)
+    print str(t.duration) # -> '0:01:15'
+
+Days Usage
+~~~~~~~~~~
+
+The following causes the value in the database to be interpreted as days.
+
+In models.py::
+
+    from durationfield.db.models.fields.duration import DurationField
+
+    class Time(models.Model):
+        ...
+        duration = DurationField(precision='days')
+        ...
+
+    t = Time(duration='15d 0:01:15.00123')
+    print str(t.duration) # -> '15 days, 0:00:00'
+
+In the database the duration field would be set to :code:`15`.
+
+Note that when setting duration as an integer it's interpreted as days, ie::
+
+    t = Time(duration=15)
+    print str(t.duration) # -> '15 days, 0:00:00'
 
 Development
 -----------

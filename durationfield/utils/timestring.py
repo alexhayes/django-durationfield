@@ -15,7 +15,7 @@ MONTHS_TO_DAYS = getattr(settings, "DURATIONFIELD_MONTHS_TO_DAYS", 30)
 YEARS_TO_DAYS = getattr(settings, "DURATIONFIELD_YEARS_TO_DAYS", 365)
 
 
-def str_to_timedelta(td_str):
+def str_to_timedelta(td_str, precision='microseconds'):
     """
     Returns a timedelta parsed from the native string output of a timedelta.
 
@@ -67,10 +67,24 @@ def str_to_timedelta(td_str):
         time_groups["days"] = time_groups["days"] + (time_groups["months"] * MONTHS_TO_DAYS)
     time_groups["days"] = time_groups["days"] + (time_groups["weeks"] * 7)
 
-    return timedelta(
-        days=time_groups["days"],
-        hours=time_groups["hours"],
-        minutes=time_groups["minutes"],
-        seconds=time_groups["seconds"],
-        microseconds=time_groups["microseconds"]
-    )
+    if precision == 'microseconds':
+        kwargs = dict(
+            days=time_groups["days"],
+            hours=time_groups["hours"],
+            minutes=time_groups["minutes"],
+            seconds=time_groups["seconds"],
+            microseconds=time_groups["microseconds"]
+        )
+    elif precision == 'seconds':
+        kwargs = dict(
+            days=time_groups["days"],
+            hours=time_groups["hours"],
+            minutes=time_groups["minutes"],
+            seconds=time_groups["seconds"]
+        )
+    elif precision == 'days':
+        kwargs = dict(days=time_groups["days"])
+    else:
+        raise NotImplementedError("Precision '%s' is not implemented." % precision)
+
+    return timedelta(**kwargs)
